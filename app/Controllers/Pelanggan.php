@@ -1,62 +1,75 @@
 <?php
-
 namespace App\Controllers;
 
 use App\Models\PelangganModel;
 
 class Pelanggan extends BaseController
 {
-    protected $pelangganModel;
-
-    public function __construct()
-    {
-        $this->pelangganModel = new PelangganModel();
-    }
-
     public function index()
     {
-        $data['pelanggan'] = $this->pelangganModel->findAll();
-        return view('pelanggan/index', $data);
+        $data['pelanggan'] = (new PelangganModel())->findAll();
+        $data['title'] = 'Daftar Pelanggan';
+        return view('admin/pelanggan/index', $data);
+    }
+
+    public function new()
+    {
+        $data['title'] = 'Tambah Pelanggan Baru';
+        return view('admin/pelanggan/new', $data);
     }
 
     public function create()
     {
-        return view('pelanggan/create');
+        $rules = [
+            'nama'  => 'required|max_length[100]',
+            'no_hp' => 'permit_empty|max_length[20]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to('/admin/pelanggan/new')->withInput()->with('errors', $this->validator->getErrors());
+        }
+        
+        $data = $this->request->getPost();
+        $data['jaminan_tabung'] = isset($data['jaminan_tabung']) ? 1 : 0;
+
+        (new PelangganModel())->save($data);
+        return redirect()->to('/admin/pelanggan')->with('success', 'Data pelanggan berhasil ditambahkan.');
     }
 
-    public function store()
+    public function edit($id = null)
     {
-        $this->pelangganModel->save([
-            'nama' => $this->request->getPost('nama'),
-            'jenis_kelamin' => $this->request->getPost('jenis_kelamin'),
-            'alamat' => $this->request->getPost('alamat'),
-            'no_hp' => $this->request->getPost('no_hp'),
-            'jaminan_tabung' => $this->request->getPost('jaminan_tabung') ? 1 : 0,
-        ]);
-        return redirect()->to('/pelanggan');
+        $model = new PelangganModel();
+        $data['pelanggan'] = $model->find($id);
+        $data['title'] = 'Edit Pelanggan';
+
+        if (empty($data['pelanggan'])) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Data pelanggan tidak ditemukan.');
+        }
+
+        return view('admin/pelanggan/edit', $data);
     }
 
-    public function edit($id)
+    public function update($id = null)
     {
-        $data['pelanggan'] = $this->pelangganModel->find($id);
-        return view('pelanggan/edit', $data);
+        $rules = [
+            'nama'  => 'required|max_length[100]',
+            'no_hp' => 'permit_empty|max_length[20]',
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to("/admin/pelanggan/edit/{$id}")->withInput()->with('errors', $this->validator->getErrors());
+        }
+        
+        $data = $this->request->getPost();
+        $data['jaminan_tabung'] = isset($data['jaminan_tabung']) ? 1 : 0;
+
+        (new PelangganModel())->update($id, $data);
+        return redirect()->to('/admin/pelanggan')->with('success', 'Data pelanggan berhasil diperbarui.');
     }
 
-    public function update($id)
+    public function delete($id = null)
     {
-        $this->pelangganModel->update($id, [
-            'nama' => $this->request->getPost('nama'),
-            'jenis_kelamin' => $this->request->getPost('jenis_kelamin'),
-            'alamat' => $this->request->getPost('alamat'),
-            'no_hp' => $this->request->getPost('no_hp'),
-            'jaminan_tabung' => $this->request->getPost('jaminan_tabung') ? 1 : 0,
-        ]);
-        return redirect()->to('/pelanggan');
-    }
-
-    public function delete($id)
-    {
-        $this->pelangganModel->delete($id);
-        return redirect()->to('/pelanggan');
+        (new PelangganModel())->delete($id);
+        return redirect()->to('/admin/pelanggan')->with('success', 'Data pelanggan berhasil dihapus.');
     }
 }

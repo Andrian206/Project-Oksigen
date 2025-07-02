@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Controllers;
-use App\Models\UserModel;
+
+use App\Models\AdminModel;
 
 class Auth extends BaseController
 {
@@ -10,96 +10,39 @@ class Auth extends BaseController
         return view('auth/login');
     }
 
-    public function doLogin()
+    public function loginAction()
     {
-        if (!$this->validate([
+        $rules = [
             'username' => 'required',
             'password' => 'required'
-        ])) {
-            return redirect()->to('/login')->with('error', 'Harap isi username dan password');
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->to('/login')->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $userModel = new UserModel();
-        $username = $this->request->getPost('username');
-        $password = $this->request->getPost('password');
+        $adminModel = new AdminModel();
+        $username  = $this->request->getPost('username');
+        $password  = $this->request->getPost('password');
+        $admin     = $adminModel->where('username', $username)->first();
 
-        $user = $userModel->where('username', $username)->first();
-
-        if ($user && password_verify($password, $user['password'])) {
+        if ($admin && $password === $admin['password']) {
             session()->set([
-                'id_user'    => $user['id_user'],
-                'username'   => $user['username'],
-                'role'       => $user['role'],
+                'id_admin'   => $admin['id_admin'],
+                'username'   => $admin['username'],
+                'nama_lengkap'  => $admin['nama_lengkap'],
                 'isLoggedIn' => true
             ]);
-
-            if ($user['role'] === 'admin') {
-                return redirect()->to('/dashboard');
-            } else {
-                return redirect()->to('/userpanel');
-            }
+            
+            return redirect()->to('/admin/dashboard');
         }
 
-        return redirect()->to('/login')->with('error', 'Login gagal');
-    }
-
-
-    public function register()
-    {
-        return view('auth/register');
-    }
-
-    public function doRegister()
-    {
-        $username = $this->request->getPost('username');
-        $password = $this->request->getPost('password');
-        $confirm  = $this->request->getPost('confirm_password');
-
-        if (!$username || !$password || !$confirm) {
-            return redirect()->to('/register')->with('error', 'Semua field wajib diisi!');
-        }
-
-        if (!preg_match('/^[a-zA-Z0-9._-]{8,}$/', $username)) {
-            return redirect()->to('/register')->with('error', 'Username minimal 8 karakter dan hanya huruf, angka, titik, underscore atau strip!');
-        }
-
-        if (!preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $password)) {
-            return redirect()->to('/register')->with('error', 'Password harus kuat: huruf besar, kecil, angka & simbol!');
-        }
-
-        if ($password !== $confirm) {
-            return redirect()->to('/register')->with('error', 'Konfirmasi password tidak cocok!');
-        }
-
-        $userModel = new \App\Models\UserModel();
-        if ($userModel->where('username', $username)->first()) {
-            return redirect()->to('/register')->with('error', 'Username sudah digunakan!');
-        }
-
-        $userModel->insert([
-            'username' => $username,
-            'password' => password_hash($password, PASSWORD_DEFAULT),
-            'role'     => 'user' 
-        ]);
-
-        $idUserBaru = $userModel->insertID();
-
-        $pelangganModel = new \App\Models\PelangganModel();
-        $pelangganModel->insert([
-            'nama' => $username,
-            'id_user' => $idUserBaru,
-            'jenis_kelamin' => null,
-            'alamat' => null,
-            'no_hp' => null,
-            'jaminan_tabung' => 0
-        ]);
-
-        return redirect()->to('/login')->with('success', 'Akun berhasil dibuat!');
+        return redirect()->to('/login')->with('error', 'Username atau password salah.');
     }
 
     public function logout()
     {
         session()->destroy();
-        return redirect()->to('/login');
+        return redirect()->to('/login')->with('success', 'Anda telah berhasil logout.');
     }
 }

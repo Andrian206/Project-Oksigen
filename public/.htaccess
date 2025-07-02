@@ -1,49 +1,66 @@
-# Disable directory browsing
+# ======================================================================
+# PENGATURAN UMUM APACHE
+# ======================================================================
+
+# Menonaktifkan kemampuan untuk melihat daftar file dalam sebuah direktori
+# Fitur keamanan penting.
 Options -Indexes
 
-# ----------------------------------------------------------------------
-# Rewrite engine
-# ----------------------------------------------------------------------
+# Menyembunyikan informasi versi server dari header respons.
+# Fitur keamanan untuk menyulitkan penyerang.
+ServerSignature Off
 
-# Turning on the rewrite engine is necessary for the following rules and features.
-# FollowSymLinks must be enabled for this to work.
+
+# ======================================================================
+# MESIN REWRITE URL (MOD_REWRITE)
+# ======================================================================
+
 <IfModule mod_rewrite.c>
+	# Aktifkan opsi yang dibutuhkan oleh mod_rewrite
 	Options +FollowSymlinks
 	RewriteEngine On
 
-	# If you installed CodeIgniter in a subfolder, you will need to
-	# change the following line to match the subfolder you need.
-	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
-	# RewriteBase /
+	# ------------------------------------------------------------------
+	# ATURAN PENGALIHAN (REDIRECT RULES)
+	# ------------------------------------------------------------------
 
-	# Redirect Trailing Slashes...
+	# [TAMBAHAN] Aturan 1: Paksa penggunaan HTTPS (SSL)
+	# Mengalihkan http://... ke https://...
+	RewriteCond %{HTTPS} !=on
+	RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
+
+	# Aturan 2: Hapus 'www.' dari nama domain
+	# Mengalihkan https://www.andhyoksigen.com ke https://andhyoksigen.com
+	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+	RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
+
+	# Aturan 3: Hapus garis miring (slash) di akhir URL
+	# Mengalihkan /pelanggan/ ke /pelanggan
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteCond %{REQUEST_URI} (.+)/$
 	RewriteRule ^ %1 [L,R=301]
 
-	# Rewrite "www.example.com -> example.com"
-	RewriteCond %{HTTPS} !=on
-	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
-	RewriteRule ^ http://%1%{REQUEST_URI} [R=301,L]
-
-	# Checks to see if the user is attempting to access a valid file,
-	# such as an image or css document, if this isn't true it sends the
-	# request to the front controller, index.php
+	# ------------------------------------------------------------------
+	# ATURAN UTAMA CODEIGNITER 4
+	# ------------------------------------------------------------------
+	# Aturan ini mengarahkan semua permintaan yang BUKAN file atau direktori nyata
+	# ke file index.php agar CodeIgniter dapat memproses rutenya.
 	RewriteCond %{REQUEST_FILENAME} !-f
 	RewriteCond %{REQUEST_FILENAME} !-d
 	RewriteRule ^([\s\S]*)$ index.php/$1 [L,NC,QSA]
 
-	# Ensure Authorization header is passed along
+	# Memastikan header Otorisasi (untuk API) tetap diteruskan.
 	RewriteCond %{HTTP:Authorization} .
 	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 </IfModule>
 
+
+# ======================================================================
+# FALLBACK JIKA MOD_REWRITE TIDAK AKTIF
+# ======================================================================
+# Jika mod_rewrite tidak tersedia di server, semua error 404 akan
+# diarahkan ke index.php agar aplikasi tetap bisa bekerja.
 <IfModule !mod_rewrite.c>
-	# If we don't have mod_rewrite installed, all 404's
-	# can be sent to index.php, and everything works as normal.
 	ErrorDocument 404 index.php
 </IfModule>
-
-# Disable server signature start
-ServerSignature Off
-# Disable server signature end

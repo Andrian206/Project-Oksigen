@@ -10,8 +10,7 @@ class GuestFilter implements FilterInterface
     public function before(RequestInterface $request, $arguments = null)
     {
         if (session()->get('isLoggedIn')) {
-            $role = session()->get('role');
-            return redirect()->to($role === 'admin' ? '/dashboard' : '/userpanel');
+            return redirect()->to('/admin/dashboard');
         }
     }
 
